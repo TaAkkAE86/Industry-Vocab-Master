@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Industry Vocab Master</title>
+    <title>Industry Vocab Master & Knowledge</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <style>
         :root {
             --primary: #2563eb;
             --secondary: #f59e0b;
             --success: #10b981;
             --danger: #ef4444;
+            --info: #8b5cf6;
             --background: #f0fdf4;
             --text: #1f2937;
         }
@@ -29,6 +34,7 @@
             margin: 0;
             background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
             background-size: 20px 20px;
+            padding: 20px;
         }
 
         .game-container {
@@ -37,11 +43,16 @@
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 500px;
+            max-width: 550px;
+            max-height: 90vh;
+            overflow-y: auto;
             text-align: center;
             position: relative;
-            overflow: hidden;
         }
+
+        /* Scrollbar แต่งให้สวยงาม */
+        .game-container::-webkit-scrollbar { width: 8px; }
+        .game-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
         /* Header Stats */
         .stats {
@@ -50,6 +61,9 @@
             margin-bottom: 20px;
             font-weight: bold;
             font-size: 1.1em;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 10px;
         }
 
         .streak { color: var(--secondary); }
@@ -57,7 +71,7 @@
 
         /* Screens */
         .screen { display: none; }
-        .screen.active { display: block; animation: fadeIn 0.5s; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease-out; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -86,16 +100,21 @@
             transform: translateY(-2px);
         }
 
-        .btn.correct {
-            background: var(--success);
+        .btn.correct { background: var(--success); color: white; border-color: var(--success); }
+        .btn.wrong { background: var(--danger); color: white; border-color: var(--danger); }
+        
+        .btn-knowledge {
+            background: var(--info);
             color: white;
-            border-color: var(--success);
+            border-color: var(--info);
+            margin-top: 20px;
         }
+        .btn-knowledge:hover { background: #7c3aed; color: white; }
 
-        .btn.wrong {
-            background: var(--danger);
-            color: white;
-            border-color: var(--danger);
+        .btn-back {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            margin-top: 20px;
         }
 
         /* Category Grid */
@@ -103,13 +122,15 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-bottom: 15px;
         }
 
         .cat-btn {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 20px 10px;
+            padding: 15px 10px;
+            font-size: 1em;
         }
         .cat-btn:hover { background: #1d4ed8; color: white;}
 
@@ -122,7 +143,6 @@
             margin: 20px 0;
             overflow: hidden;
         }
-
         .timer-fill {
             height: 100%;
             background: var(--secondary);
@@ -130,55 +150,181 @@
             transition: width 1s linear;
         }
 
-        h1 { margin-top: 0; color: var(--primary); }
+        h1 { margin-top: 0; color: var(--primary); font-size: 1.8em; }
         h2.question-word { font-size: 2em; margin: 20px 0; color: #111827; }
+
+        /* Knowledge Section Styles */
+        .knowledge-content {
+            text-align: left;
+            padding: 10px;
+        }
+        .knowledge-content h2 { color: var(--info); border-bottom: 2px solid var(--info); padding-bottom: 5px; }
+        .knowledge-content h3 { color: var(--primary); margin-top: 20px; }
+        .knowledge-card {
+            background: #f8fafc;
+            border-left: 4px solid var(--secondary);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        .waste-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .waste-letter {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--danger);
+            margin-right: 15px;
+            min-width: 30px;
+        }
+        .why-step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #eff6ff;
+            border-radius: 8px;
+        }
+        .why-step span { font-weight: bold; color: var(--primary); }
     </style>
-    <!-- แนะนำให้ใช้ Font ไทยเพื่อความสวยงาม -->
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <div class="game-container">
-    <!-- Header สถิติ -->
-    <div class="stats">
-        <div class="streak">🔥 เข้าเรียนต่อเนื่อง: <span id="streak-count">0</span> วัน</div>
-        <div class="score">⭐ คะแนน: <span id="score-count">0</span></div>
-    </div>
-
     <!-- หน้าจอ 1: เลือกหมวดหมู่ -->
     <div id="screen-home" class="screen active">
+        <div class="stats">
+            <div class="streak">🔥 เล่นต่อเนื่อง: <span id="streak-count">0</span> วัน</div>
+            <div class="score">⭐ คะแนนรวม: <span id="total-score-count">0</span></div>
+        </div>
+        
         <h1>🏭 Industry Vocab Master</h1>
-        <p>เลือกหมวดหมู่คำศัพท์ที่คุณต้องการฝึกฝนวันนี้!</p>
+        <p>เลือกหมวดหมู่คำศัพท์เพื่อเริ่มทดสอบความรู้!</p>
+        
         <div class="category-grid" id="category-container">
             <!-- ปุ่มหมวดหมู่จะถูกสร้างด้วย JS -->
         </div>
+
+        <button class="btn btn-knowledge" onclick="showScreen('knowledge-menu')">
+            📚 มุมความรู้ (5 Whys & 7 Wastes)
+        </button>
     </div>
 
     <!-- หน้าจอ 2: เล่นเกม -->
     <div id="screen-game" class="screen">
         <h3 id="current-category-title">หมวดหมู่</h3>
+        <div class="stats" style="margin-bottom: 5px;">
+            <div>คะแนนรอบนี้: <span id="score-count" class="score">0</span></div>
+        </div>
         <div class="timer-bar"><div class="timer-fill" id="timer"></div></div>
         <h2 class="question-word" id="question">Word</h2>
         <div id="options-container">
             <!-- ปุ่มตัวเลือกจะถูกสร้างด้วย JS -->
         </div>
+        <button class="btn btn-back" onclick="endGame(true)">🛑 ยอมแพ้ / กลับหน้าหลัก</button>
     </div>
 
     <!-- หน้าจอ 3: สรุปผล -->
     <div id="screen-result" class="screen">
         <h1>หมดเวลา! ⏱️</h1>
-        <h2>คุณทำได้ <span id="final-score" style="color: var(--primary);">0</span> คะแนน</h2>
+        <h2>คุณทำได้ <span id="final-score" style="color: var(--primary); font-size: 1.5em;">0</span> คะแนน</h2>
         <p id="result-message">เก่งมาก! พรุ่งนี้มาเล่นใหม่เพื่อรักษาสถิตินะ</p>
         <button class="btn cat-btn" onclick="showScreen('home')">🏠 กลับหน้าหลัก</button>
+    </div>
+
+    <!-- หน้าจอ 4: เมนูมุมความรู้ -->
+    <div id="screen-knowledge-menu" class="screen">
+        <h1>📚 มุมความรู้</h1>
+        <p>เลือกหัวข้อที่คุณต้องการศึกษา</p>
+        <button class="btn" onclick="showScreen('knowledge-5whys')" style="border-color: var(--info); color: var(--info);">
+            💡 เทคนิค 5 Whys (การวิเคราะห์หาสาเหตุ)
+        </button>
+        <button class="btn" onclick="showScreen('knowledge-7wastes')" style="border-color: var(--danger); color: var(--danger);">
+            🗑️ 7 Wastes (ความสูญเปล่า 7 ประการ)
+        </button>
+        <button class="btn btn-back" onclick="showScreen('home')">🏠 กลับหน้าหลัก</button>
+    </div>
+
+    <!-- หน้าจอ 5: เนื้อหา 5 Whys -->
+    <div id="screen-knowledge-5whys" class="screen">
+        <div class="knowledge-content">
+            <h2>💡 เทคนิค 5 Whys</h2>
+            <p>คือเทคนิคการตั้งคำถาม <b>"ทำไม?"</b> ซ้ำๆ (ประมาณ 5 ครั้ง) เพื่อเจาะลึกหาสาเหตุที่แท้จริง (Root Cause) ของปัญหา ไม่ใช่เพียงแค่แก้ที่อาการที่เกิดขึ้น</p>
+            
+            <h3>ตัวอย่างการใช้งาน</h3>
+            <div class="knowledge-card">
+                <p><b>🚨 ปัญหา:</b> เครื่องจักรหยุดทำงานบ่อย</p>
+                <div class="why-step"><span>Why 1:</span> ทำไมเครื่องถึงหยุด? <br>👉 เพราะลูกปืนร้อนจัดและเสีย</div>
+                <div class="why-step"><span>Why 2:</span> ทำไมลูกปืนถึงร้อนจัด? <br>👉 เพราะการหล่อลื่นไม่เพียงพอ</div>
+                <div class="why-step"><span>Why 3:</span> ทำไมการหล่อลื่นไม่พอ? <br>👉 เพราะพนักงานลืมอัดจาระบี</div>
+                <div class="why-step"><span>Why 4:</span> ทำไมพนักงานถึงลืม? <br>👉 เพราะไม่มีป้ายหรือระบบแจ้งเตือน</div>
+                <div class="why-step" style="background: #fef2f2; border: 1px solid var(--danger);">
+                    <span style="color: var(--danger);">Why 5 (Root Cause):</span> ทำไมไม่มีระบบแจ้งเตือน? <br>
+                    👉 <b>เพราะตอนออกแบบไม่ได้กำหนดมาตรฐานการบำรุงรักษาไว้</b>
+                </div>
+            </div>
+
+            <h3>⚠️ ข้อควรระวัง</h3>
+            <ul>
+                <li>อย่าถาม "ทำไม" เพื่อจับผิดคน (ให้โฟกัสที่ระบบ/กระบวนการ)</li>
+                <li>ใช้ข้อมูลจริงและข้อเท็จจริงในการวิเคราะห์</li>
+                <li>เมื่อแก้ที่สาเหตุรากเหง้า ปัญหาจะไม่เกิดซ้ำ</li>
+            </ul>
+        </div>
+        <button class="btn btn-back" onclick="showScreen('knowledge-menu')">⬅️ ย้อนกลับ</button>
+    </div>
+
+    <!-- หน้าจอ 6: เนื้อหา 7 Wastes -->
+    <div id="screen-knowledge-7wastes" class="screen">
+        <div class="knowledge-content">
+            <h2>🗑️ 7 Wastes (ความสูญเปล่า)</h2>
+            <p>ความสูญเปล่า คือ กิจกรรมที่ไม่เพิ่มคุณค่า (Non-Value Added) แต่กลับใช้ทรัพยากร เวลา คน หรือเงินทุน ทำให้ต้นทุนสูงขึ้น</p>
+            
+            <h3>หลักจำง่ายๆ: D O W N T I M E (หรือ O W T O I M D)</h3>
+            
+            <div class="waste-item">
+                <div class="waste-letter">O</div>
+                <div><b>Overproduction (ผลิตมากเกินไป)</b><br>ผลิตเร็วกว่าหรือมากกว่าความต้องการของลูกค้า ทำให้เกิดสต็อกจม</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">W</div>
+                <div><b>Waiting (การรอคอย)</b><br>รอเครื่องจักรว่าง, รอวัตถุดิบ, รอการอนุมัติ ทำให้เสียเวลาเปล่า</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">T</div>
+                <div><b>Transportation (การขนส่ง)</b><br>การเคลื่อนย้ายชิ้นงานหรือข้อมูลบ่อยๆ โดยไม่จำเป็น วางผังโรงงานไม่ดี</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">O</div>
+                <div><b>Over-Processing (ทำงานเกินจำเป็น)</b><br>มีขั้นตอนมากเกินไป ตรวจสอบซ้ำซ้อน ใช้อุปกรณ์เกินความจำเป็น</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">I</div>
+                <div><b>Inventory (สินค้าคงคลัง)</b><br>เก็บวัตถุดิบหรืองานระหว่างทำ (WIP) มากเกินไป ทำให้เสื่อมสภาพและต้นทุนจม</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">M</div>
+                <div><b>Motion (การเคลื่อนไหว)</b><br>การเคลื่อนไหวของคนที่ไม่จำเป็น เช่น เดินไกล เอื้อมหยิบของ ก้มๆ เงยๆ</div>
+            </div>
+            <div class="waste-item">
+                <div class="waste-letter">D</div>
+                <div><b>Defects (ของเสีย/งานแก้ไข)</b><br>ชิ้นงานไม่ได้มาตรฐาน ต้องนำมาแก้ใหม่ (Rework) หรือทิ้ง ทำให้เสียเวลาและต้นทุน</div>
+            </div>
+        </div>
+        <button class="btn btn-back" onclick="showScreen('knowledge-menu')">⬅️ ย้อนกลับ</button>
     </div>
 </div>
 
 <script>
-    // 1. ฐานข้อมูลคำศัพท์ (ดึงมาจากภาพที่คุณแนบมาเป็นตัวอย่าง)
-    // คุณสามารถเพิ่มคำศัพท์ให้ครบตามภาพได้ในโครงสร้างนี้
-        const vocabDatabase = {
+    // ฐานข้อมูลคำศัพท์ 250 คำ
+    const vocabDatabase = {
         maintenance: {
-            name: "🔧 งานซ่อมบำรุง (Maintenance)",
+            name: "🔧 งานซ่อมบำรุง",
             words: [
                 { en: "Preventive Maintenance (PM)", th: "การบำรุงรักษาเชิงป้องกัน" },
                 { en: "Corrective Maintenance", th: "การบำรุงรักษาเชิงแก้ไข" },
@@ -188,9 +334,9 @@
                 { en: "Planned Maintenance", th: "การบำรุงรักษาตามแผน" },
                 { en: "Emergency Maintenance", th: "การซ่อมบำรุงฉุกเฉิน" },
                 { en: "Autonomous Maintenance", th: "การบำรุงรักษาด้วยตนเอง" },
-                { en: "OEE (Overall Equipment Effectiveness)", th: "ประสิทธิผลโดยรวมของเครื่องจักร" },
-                { en: "MTBF (Mean Time Between Failures)", th: "ระยะเวลาเฉลี่ยระหว่างการขัดข้อง" },
-                { en: "MTTR (Mean Time To Repair)", th: "เวลาเฉลี่ยในการซ่อม" },
+                { en: "OEE", th: "ประสิทธิผลโดยรวมของเครื่องจักร" },
+                { en: "MTBF", th: "ระยะเวลาเฉลี่ยระหว่างการขัดข้อง" },
+                { en: "MTTR", th: "เวลาเฉลี่ยในการซ่อม" },
                 { en: "Downtime", th: "เวลาหยุดทำงาน" },
                 { en: "Uptime", th: "เวลาเดินเครื่องได้" },
                 { en: "Availability", th: "ความพร้อมใช้งานของเครื่องจักร" },
@@ -233,7 +379,7 @@
             ]
         },
         production: {
-            name: "⚙️ สายการผลิต (Production Line)",
+            name: "⚙️ สายการผลิต",
             words: [
                 { en: "Production line", th: "สายการผลิต" },
                 { en: "Workstation", th: "สถานีงาน" },
@@ -288,7 +434,7 @@
             ]
         },
         automotive: {
-            name: "🚗 อุตสาหกรรมยานยนต์ (Automotive)",
+            name: "🚗 ยานยนต์",
             words: [
                 { en: "Engine", th: "เครื่องยนต์" },
                 { en: "Transmission", th: "เกียร์" },
@@ -343,7 +489,7 @@
             ]
         },
         qc: {
-            name: "🔍 งาน QC (Quality Control)",
+            name: "🔍 งาน QC",
             words: [
                 { en: "Quality Control (QC)", th: "การควบคุมคุณภาพ" },
                 { en: "Quality Assurance (QA)", th: "การประกันคุณภาพ" },
@@ -393,12 +539,12 @@
                 { en: "Incoming Inspection", th: "การตรวจรับวัตถุดิบ" },
                 { en: "Final Inspection", th: "การตรวจขั้นสุดท้าย" },
                 { en: "Sampling", th: "การสุ่มตัวอย่าง" },
-                { en: "AQL (Acceptable Quality Level)", th: "ระดับคุณภาพที่ยอมรับได้" },
+                { en: "AQL", th: "ระดับคุณภาพที่ยอมรับได้" },
                 { en: "Continuous Improvement", th: "การปรับปรุงอย่างต่อเนื่อง" }
             ]
         },
         warehouse: {
-            name: "📦 คลังสินค้า (Warehouse)",
+            name: "📦 คลังสินค้า",
             words: [
                 { en: "Warehouse", th: "คลังสินค้า" },
                 { en: "Inventory", th: "สินค้าคงคลัง" },
@@ -458,12 +604,13 @@
     let currentCategory = '';
     let currentWords = [];
     let score = 0;
+    let totalScore = parseInt(localStorage.getItem('totalScore') || 0);
     let currentQuestionIndex = 0;
     let timerInterval;
-    let timeLeft = 60; // ให้เวลา 60 วินาทีต่อรอบ
+    let timeLeft = 60; // 60 วินาทีต่อรอบ
 
-    // ระบบ Streak (เข้าเล่นต่อเนื่อง)
-    function checkStreak() {
+    // ระบบ Streak & Total Score
+    function loadStats() {
         const lastPlayed = localStorage.getItem('lastPlayed');
         let streak = parseInt(localStorage.getItem('streak') || 0);
         const today = new Date().toDateString();
@@ -475,29 +622,36 @@
 
             if (lastPlayed !== today) {
                 if (lastDate.toDateString() === yesterday.toDateString()) {
-                    streak++; // เล่นต่อเนื่อง
+                    streak++; 
                 } else {
-                    streak = 1; // ขาดตอน เริ่มใหม่
+                    streak = 1; 
                 }
             }
         } else {
-            streak = 1; // เล่นครั้งแรก
+            streak = 1; 
         }
 
         localStorage.setItem('lastPlayed', today);
         localStorage.setItem('streak', streak);
+        
         document.getElementById('streak-count').innerText = streak;
+        document.getElementById('total-score-count').innerText = totalScore;
     }
 
     // ฟังก์ชันจัดการหน้าจอ
     function showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(`screen-${screenId}`).classList.add('active');
+        
+        // เลื่อนหน้าจอกลับไปด้านบนสุดเสมอเวลาเปลี่ยนหน้า
+        document.querySelector('.game-container').scrollTop = 0;
+        
+        if(screenId === 'home') loadStats();
     }
 
-    // สร้างปุ่มเลือกหมวดหมู่ตอนเริ่มเกม
+    // สร้างปุ่มเลือกหมวดหมู่
     function initHome() {
-        checkStreak();
+        loadStats();
         const container = document.getElementById('category-container');
         container.innerHTML = '';
         for (const [key, data] of Object.entries(vocabDatabase)) {
@@ -509,12 +663,10 @@
         }
     }
 
-    // สุ่ม Array
     function shuffleArray(array) {
         return array.sort(() => Math.random() - 0.5);
     }
 
-    // เริ่มเกม
     function startGame(categoryKey) {
         currentCategory = categoryKey;
         currentWords = shuffleArray([...vocabDatabase[categoryKey].words]);
@@ -530,7 +682,6 @@
         loadNextQuestion();
     }
 
-    // ระบบเวลา
     function startTimer() {
         const timerFill = document.getElementById('timer');
         clearInterval(timerInterval);
@@ -544,15 +695,13 @@
             else timerFill.style.background = 'var(--secondary)';
 
             if (timeLeft <= 0) {
-                endGame();
+                endGame(false);
             }
         }, 1000);
     }
 
-    // โหลดคำถามถัดไป
     function loadNextQuestion() {
         if (currentQuestionIndex >= currentWords.length) {
-            // ถ้าระหว่างเล่นคำศัพท์หมด ให้สุ่มคำศัพท์ชุดเดิมมาเล่นต่อจนกว่าเวลาจะหมด
             currentWords = shuffleArray([...vocabDatabase[currentCategory].words]);
             currentQuestionIndex = 0;
         }
@@ -560,10 +709,7 @@
         const currentWordObj = currentWords[currentQuestionIndex];
         document.getElementById('question').innerText = currentWordObj.en;
 
-        // สร้างตัวเลือก (1 ถูก + 3 ผิด)
         let options = [currentWordObj.th];
-        
-        // หาคำแปลผิดจากหมวดเดียวกันมาหลอก
         const allThWords = vocabDatabase[currentCategory].words.map(w => w.th);
         const wrongOptions = shuffleArray(allThWords.filter(th => th !== currentWordObj.th)).slice(0, 3);
         
@@ -581,9 +727,7 @@
         });
     }
 
-    // ตรวจคำตอบ
     function checkAnswer(btn, selected, correct) {
-        // ปิดปุ่มทั้งหมดกันกดซ้ำ
         const allBtns = document.getElementById('options-container').querySelectorAll('.btn');
         allBtns.forEach(b => b.style.pointerEvents = 'none');
 
@@ -591,12 +735,9 @@
             btn.classList.add('correct');
             score += 10;
             document.getElementById('score-count').innerText = score;
-            
-            // เพิ่มเวลาโบนัส 2 วินาที
             timeLeft = Math.min(timeLeft + 2, 60); 
         } else {
             btn.classList.add('wrong');
-            // ไฮไลท์ข้อที่ถูกให้ดูด้วย
             allBtns.forEach(b => {
                 if(b.innerText === correct) b.classList.add('correct');
             });
@@ -605,25 +746,48 @@
         setTimeout(() => {
             currentQuestionIndex++;
             loadNextQuestion();
-        }, 1000); // รอ 1 วินาทีแล้วไปข้อต่อไป
+        }, 1000);
     }
 
-    // จบเกม
-    function endGame() {
+    function endGame(isForceQuit) {
         clearInterval(timerInterval);
+        
+        if(isForceQuit) {
+            showScreen('home');
+            return;
+        }
+
+        // บันทึกคะแนนสะสม
+        totalScore += score;
+        localStorage.setItem('totalScore', totalScore);
+
         document.getElementById('final-score').innerText = score;
         
         const msg = document.getElementById('result-message');
-        if(score > 100) msg.innerText = "สุดยอด! คุณคือผู้เชี่ยวชาญคำศัพท์โรงงาน 🏆";
-        else if(score > 50) msg.innerText = "เก่งมาก! ฝึกอีกนิดจะจำได้แม่นยำขึ้น 👍";
+        if(score >= 100) msg.innerText = "สุดยอด! คุณคือผู้เชี่ยวชาญคำศัพท์โรงงาน 🏆";
+        else if(score >= 50) msg.innerText = "เก่งมาก! ฝึกอีกนิดจะจำได้แม่นยำขึ้น 👍";
         else msg.innerText = "พยายามได้ดี! พรุ่งนี้มาทบทวนกันใหม่นะ 💪";
 
         showScreen('result');
     }
 
-    // เริ่มต้นทำงาน
     window.onload = initHome;
 
 </script>
+    <script>
+        // ลงทะเบียน Service Worker สำหรับ PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered successful with scope: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
+
 </body>
 </html>

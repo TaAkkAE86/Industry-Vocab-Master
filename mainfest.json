@@ -1,0 +1,21 @@
+{
+  name Industry Vocab Master,
+  short_name Vocab Master,
+  description เกมเรียนรู้คำศัพท์อุตสาหกรรมและโรงงาน,
+  start_url .index.html,
+  display standalone,
+  background_color #f0fdf4,
+  theme_color #2563eb,
+  icons [
+    {
+      src icon-192.png,
+      sizes 192x192,
+      type imagepng
+    },
+    {
+      src icon-512.png,
+      sizes 512x512,
+      type imagepng
+    }
+  ]
+}

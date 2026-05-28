@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industry Vocab Master</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --background: #f0fdf4;
+            --text: #1f2937;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Sarabun', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Header Stats */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .streak { color: var(--secondary); }
+        .score { color: var(--primary); }
+
+        /* Screens */
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.5s; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            transform: translateY(-2px);
+        }
+
+        .btn.correct {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .btn.wrong {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        /* Category Grid */
+        .category-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .cat-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 20px 10px;
+        }
+        .cat-btn:hover { background: #1d4ed8; color: white;}
+
+        /* Timer */
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background: #e5e7eb;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .timer-fill {
+            height: 100%;
+            background: var(--secondary);
+            width: 100%;
+            transition: width 1s linear;
+        }
+
+        h1 { margin-top: 0; color: var(--primary); }
+        h2.question-word { font-size: 2em; margin: 20px 0; color: #111827; }
+    </style>
+    <!-- แนะนำให้ใช้ Font ไทยเพื่อความสวยงาม -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="game-container">
+    <!-- Header สถิติ -->
+    <div class="stats">
+        <div class="streak">🔥 เข้าเรียนต่อเนื่อง: <span id="streak-count">0</span> วัน</div>
+        <div class="score">⭐ คะแนน: <span id="score-count">0</span></div>
+    </div>
+
+    <!-- หน้าจอ 1: เลือกหมวดหมู่ -->
+    <div id="screen-home" class="screen active">
+        <h1>🏭 Industry Vocab Master</h1>
+        <p>เลือกหมวดหมู่คำศัพท์ที่คุณต้องการฝึกฝนวันนี้!</p>
+        <div class="category-grid" id="category-container">
+            <!-- ปุ่มหมวดหมู่จะถูกสร้างด้วย JS -->
+        </div>
+    </div>
+
+    <!-- หน้าจอ 2: เล่นเกม -->
+    <div id="screen-game" class="screen">
+        <h3 id="current-category-title">หมวดหมู่</h3>
+        <div class="timer-bar"><div class="timer-fill" id="timer"></div></div>
+        <h2 class="question-word" id="question">Word</h2>
+        <div id="options-container">
+            <!-- ปุ่มตัวเลือกจะถูกสร้างด้วย JS -->
+        </div>
+    </div>
+
+    <!-- หน้าจอ 3: สรุปผล -->
+    <div id="screen-result" class="screen">
+        <h1>หมดเวลา! ⏱️</h1>
+        <h2>คุณทำได้ <span id="final-score" style="color: var(--primary);">0</span> คะแนน</h2>
+        <p id="result-message">เก่งมาก! พรุ่งนี้มาเล่นใหม่เพื่อรักษาสถิตินะ</p>
+        <button class="btn cat-btn" onclick="showScreen('home')">🏠 กลับหน้าหลัก</button>
+    </div>
+</div>
+
+<script>
+    // 1. ฐานข้อมูลคำศัพท์ (ดึงมาจากภาพที่คุณแนบมาเป็นตัวอย่าง)
+    // คุณสามารถเพิ่มคำศัพท์ให้ครบตามภาพได้ในโครงสร้างนี้
+        const vocabDatabase = {
+        maintenance: {
+            name: "🔧 งานซ่อมบำรุง (Maintenance)",
+            words: [
+                { en: "Preventive Maintenance (PM)", th: "การบำรุงรักษาเชิงป้องกัน" },
+                { en: "Corrective Maintenance", th: "การบำรุงรักษาเชิงแก้ไข" },
+                { en: "Predictive Maintenance (PdM)", th: "การบำรุงรักษาเชิงพยากรณ์" },
+                { en: "Breakdown Maintenance", th: "การซ่อมเมื่อเครื่องเสีย" },
+                { en: "Condition-Based Maintenance (CBM)", th: "การบำรุงรักษาตามสภาพจริง" },
+                { en: "Planned Maintenance", th: "การบำรุงรักษาตามแผน" },
+                { en: "Emergency Maintenance", th: "การซ่อมบำรุงฉุกเฉิน" },
+                { en: "Autonomous Maintenance", th: "การบำรุงรักษาด้วยตนเอง" },
+                { en: "OEE (Overall Equipment Effectiveness)", th: "ประสิทธิผลโดยรวมของเครื่องจักร" },
+                { en: "MTBF (Mean Time Between Failures)", th: "ระยะเวลาเฉลี่ยระหว่างการขัดข้อง" },
+                { en: "MTTR (Mean Time To Repair)", th: "เวลาเฉลี่ยในการซ่อม" },
+                { en: "Downtime", th: "เวลาหยุดทำงาน" },
+                { en: "Uptime", th: "เวลาเดินเครื่องได้" },
+                { en: "Availability", th: "ความพร้อมใช้งานของเครื่องจักร" },
+                { en: "Reliability", th: "ความเชื่อถือได้ของเครื่องจักร" },
+                { en: "Failure Rate", th: "อัตราการขัดข้อง" },
+                { en: "Work Order", th: "ใบสั่งงานซ่อมบำรุง" },
+                { en: "Maintenance Schedule", th: "ตารางการบำรุงรักษา" },
+                { en: "Inspection", th: "การตรวจสอบ" },
+                { en: "Lubrication", th: "การหล่อลื่น" },
+                { en: "Calibration", th: "การสอบเทียบ" },
+                { en: "Overhaul", th: "การยกเครื่อง / ซ่อมใหญ่" },
+                { en: "Shutdown Maintenance", th: "การบำรุงรักษาขณะหยุดสายการผลิต" },
+                { en: "Root Cause Analysis (RCA)", th: "การวิเคราะห์หาสาเหตุที่แท้จริง" },
+                { en: "Failure", th: "ความล้มเหลว / การขัดข้อง" },
+                { en: "Fault", th: "ความบกพร่อง" },
+                { en: "Wear", th: "การสึกหรอ" },
+                { en: "Corrosion", th: "การกัดกร่อน" },
+                { en: "Fatigue", th: "ความล้าของวัสดุ" },
+                { en: "Crack", th: "รอยแตก / รอยร้าว" },
+                { en: "Leakage", th: "การรั่วไหล" },
+                { en: "Vibration", th: "การสั่นสะเทือน" },
+                { en: "Overheating", th: "ความร้อนเกิน" },
+                { en: "Contamination", th: "การปนเปื้อน" },
+                { en: "Spare Part", th: "อะไหล่" },
+                { en: "Consumable", th: "วัสดุสิ้นเปลือง" },
+                { en: "Bearing", th: "ตลับลูกปืน" },
+                { en: "Seal / Gasket", th: "ซีล / แกสเก็ต" },
+                { en: "Filter", th: "ไส้กรอง" },
+                { en: "Belt", th: "สายพาน" },
+                { en: "Coupling", th: "ข้อต่อเพลา" },
+                { en: "Lubricant / Grease", th: "น้ำมันหล่อลื่น / จาระบี" },
+                { en: "CMMS", th: "ระบบจัดการซ่อมบำรุงด้วยคอมพิวเตอร์" },
+                { en: "IoT Sensor", th: "เซ็นเซอร์ไอโอที" },
+                { en: "Vibration Analysis", th: "การวิเคราะห์การสั่นสะเทือน" },
+                { en: "Thermography", th: "การตรวจสอบด้วยภาพความร้อน" },
+                { en: "Oil Analysis", th: "การวิเคราะห์น้ำมัน" },
+                { en: "TPM", th: "การบำรุงรักษาทวีผลที่ทุกคนมีส่วนร่วม" },
+                { en: "5S", th: "กิจกรรม 5ส" },
+                { en: "Kaizen", th: "ไคเซ็น (การปรับปรุงอย่างต่อเนื่อง)" }
+            ]
+        },
+        production: {
+            name: "⚙️ สายการผลิต (Production Line)",
+            words: [
+                { en: "Production line", th: "สายการผลิต" },
+                { en: "Workstation", th: "สถานีงาน" },
+                { en: "Conveyor belt", th: "สายพานลำเลียง" },
+                { en: "Machine", th: "เครื่องจักร" },
+                { en: "Equipment", th: "อุปกรณ์" },
+                { en: "Fixture", th: "อุปกรณ์ยึดชิ้นงาน" },
+                { en: "Tool", th: "เครื่องมือ" },
+                { en: "Jig", th: "จิ๊ก/อุปกรณ์ยึดชิ้นงาน" },
+                { en: "Robot", th: "หุ่นยนต์" },
+                { en: "Control panel", th: "แผงควบคุม" },
+                { en: "Process", th: "กระบวนการ" },
+                { en: "Operation", th: "การปฏิบัติงาน" },
+                { en: "Assembly", th: "การประกอบ" },
+                { en: "Fabrication", th: "การผลิตชิ้นส่วน" },
+                { en: "Machining", th: "การกลึง/การกัด" },
+                { en: "Welding", th: "การเชื่อม" },
+                { en: "Painting", th: "การพ่นสี" },
+                { en: "Inspection", th: "การตรวจสอบ" },
+                { en: "Testing", th: "การทดสอบ" },
+                { en: "Packaging", th: "การบรรจุ" },
+                { en: "Control", th: "การควบคุม" },
+                { en: "Monitor", th: "การเฝ้าติดตาม" },
+                { en: "Adjustment", th: "การปรับแต่ง" },
+                { en: "Setting", th: "การตั้งค่า" },
+                { en: "Program", th: "โปรแกรม" },
+                { en: "Schedule", th: "กำหนดการผลิต" },
+                { en: "Plan", th: "แผนงาน" },
+                { en: "Target", th: "เป้าหมาย" },
+                { en: "Efficiency", th: "ประสิทธิภาพ" },
+                { en: "Productivity", th: "ผลผลิตต่อหน่วย" },
+                { en: "Raw material", th: "วัตถุดิบ" },
+                { en: "Component", th: "ชิ้นส่วน" },
+                { en: "Part", th: "ชิ้นงาน" },
+                { en: "Sub-assembly", th: "ชุดย่อย" },
+                { en: "Work in process (WIP)", th: "งานระหว่างทำ" },
+                { en: "Finished product", th: "สินค้าสำเร็จรูป" },
+                { en: "Lot", th: "ล็อตการผลิต" },
+                { en: "Batch", th: "ชุดการผลิต" },
+                { en: "Stock", th: "สต็อก" },
+                { en: "Inventory", th: "คลังสินค้า" },
+                { en: "Quality", th: "คุณภาพ" },
+                { en: "Quality control (QC)", th: "ควบคุมคุณภาพ" },
+                { en: "Defect", th: "ของเสีย/ข้อบกพร่อง" },
+                { en: "Reject", th: "คัดทิ้ง" },
+                { en: "Rework", th: "แก้งาน" },
+                { en: "Standard", th: "มาตรฐาน" },
+                { en: "Tolerance", th: "ค่าความคลาดเคลื่อน" },
+                { en: "Measurement", th: "การวัด" },
+                { en: "Gauge", th: "การวัด/เกจวัด" },
+                { en: "Pass / Fail", th: "ผ่าน / ไม่ผ่าน" }
+            ]
+        },
+        automotive: {
+            name: "🚗 อุตสาหกรรมยานยนต์ (Automotive)",
+            words: [
+                { en: "Engine", th: "เครื่องยนต์" },
+                { en: "Transmission", th: "เกียร์" },
+                { en: "Clutch", th: "คลัตช์" },
+                { en: "Brake", th: "เบรก" },
+                { en: "Suspension", th: "ระบบช่วงล่าง" },
+                { en: "Steering", th: "พวงมาลัย" },
+                { en: "Battery", th: "แบตเตอรี่" },
+                { en: "Radiator", th: "หม้อน้ำ" },
+                { en: "Tire", th: "ยางรถยนต์" },
+                { en: "Exhaust system", th: "ระบบไอเสีย" },
+                { en: "Alternator", th: "ไดชาร์จ" },
+                { en: "Starter motor", th: "มอเตอร์สตาร์ท" },
+                { en: "Fuse", th: "ฟิวส์" },
+                { en: "Relay", th: "รีเลย์" },
+                { en: "Sensor", th: "เซนเซอร์" },
+                { en: "Wiring harness", th: "ชุดสายไฟ" },
+                { en: "ECU (Engine Control Unit)", th: "กล่องควบคุมเครื่องยนต์" },
+                { en: "Headlight", th: "ไฟหน้า" },
+                { en: "Tail light", th: "ไฟท้าย" },
+                { en: "Indicator / Turn signal", th: "ไฟเลี้ยว" },
+                { en: "Maintenance", th: "การบำรุงรักษา" },
+                { en: "Inspection", th: "การตรวจเช็ค" },
+                { en: "Oil change", th: "เปลี่ยนถ่ายน้ำมันเครื่อง" },
+                { en: "Tune-up", th: "การจูนเครื่องยนต์" },
+                { en: "Check fluid", th: "ตรวจเช็คน้ำ/ของเหลว" },
+                { en: "Coolant", th: "น้ำหล่อเย็น" },
+                { en: "Brake fluid", th: "น้ำมันเบรก" },
+                { en: "Air filter", th: "ไส้กรองอากาศ" },
+                { en: "Spark plug", th: "หัวเทียน" },
+                { en: "Belt", th: "สายพาน" },
+                { en: "Wrench", th: "ประแจ" },
+                { en: "Screwdriver", th: "ไขควง" },
+                { en: "Pliers", th: "คีม" },
+                { en: "Socket set", th: "ชุดบล็อก" },
+                { en: "Torque wrench", th: "ประแจปอนด์" },
+                { en: "Jack", th: "แม่แรง" },
+                { en: "Jack stand", th: "ขาตั้งแม่แรง" },
+                { en: "Multimeter", th: "มัลติมิเตอร์" },
+                { en: "Diagnostic tool", th: "เครื่องสแกนวินิจฉัย" },
+                { en: "Grease gun", th: "ปืนอัดจาระบี" },
+                { en: "Diagnose", th: "วินิจฉัยปัญหา" },
+                { en: "Problem / Issue", th: "ปัญหา" },
+                { en: "Symptom", th: "อาการ" },
+                { en: "Cause", th: "สาเหตุ" },
+                { en: "Solution", th: "แนวทางแก้ไข" },
+                { en: "Repair", th: "ซ่อมแซม" },
+                { en: "Replace", th: "เปลี่ยน/อะไหล่" },
+                { en: "Adjust", th: "ปรับแต่ง" },
+                { en: "Tighten", th: "ขันให้แน่น" },
+                { en: "Test drive", th: "ทดลองขับ" }
+            ]
+        },
+        qc: {
+            name: "🔍 งาน QC (Quality Control)",
+            words: [
+                { en: "Quality Control (QC)", th: "การควบคุมคุณภาพ" },
+                { en: "Quality Assurance (QA)", th: "การประกันคุณภาพ" },
+                { en: "Inspection", th: "การตรวจสอบ" },
+                { en: "Defect", th: "ข้อบกพร่อง" },
+                { en: "Defective Rate", th: "อัตราของเสีย" },
+                { en: "Rework", th: "การแก้งาน" },
+                { en: "Reject", th: "ของเสีย/ไม่ยอมรับ" },
+                { en: "Acceptance", th: "การยอมรับ" },
+                { en: "Tolerance", th: "ค่าความคลาดเคลื่อนยอมรับได้" },
+                { en: "Specification", th: "ข้อกำหนด/สเปค" },
+                { en: "Standard", th: "มาตรฐาน" },
+                { en: "Criteria", th: "เกณฑ์การตัดสิน" },
+                { en: "Measurement", th: "การวัด" },
+                { en: "Accuracy", th: "ความแม่นยำ" },
+                { en: "Precision", th: "ความเที่ยงตรง" },
+                { en: "Repeatability", th: "ความสามารถในการทำซ้ำ" },
+                { en: "Reproducibility", th: "ความสามารถในการทำซ้ำ (ต่างคน)" },
+                { en: "Calibration", th: "การสอบเทียบเครื่องมือ" },
+                { en: "Gauge", th: "เครื่องมือวัด" },
+                { en: "Gage R&R", th: "การวิเคราะห์ระบบการวัด" },
+                { en: "Control Plan", th: "แผนควบคุม" },
+                { en: "Check Sheet", th: "ใบตรวจสอบ" },
+                { en: "Histogram", th: "ฮิสโตแกรม" },
+                { en: "Pareto Chart", th: "แผนภูมิพาเรโต" },
+                { en: "Flow Chart", th: "ผังงาน/แผนผังขั้นตอน" },
+                { en: "Scatter Diagram", th: "แผนภาพการกระจาย" },
+                { en: "Control Chart", th: "แผนภูมิควบคุม" },
+                { en: "UCL (Upper Control Limit)", th: "ขีดจำกัดควบคุมบน" },
+                { en: "LCL (Lower Control Limit)", th: "ขีดจำกัดควบคุมล่าง" },
+                { en: "CL (Center Line)", th: "เส้นกึ่งกลาง" },
+                { en: "Out of Control", th: "อยู่นอกการควบคุม" },
+                { en: "Process Capability", th: "ความสามารถของกระบวนการ" },
+                { en: "Cp", th: "ดัชนีความสามารถ Cp" },
+                { en: "Cpk", th: "ดัชนีความสามารถ Cpk" },
+                { en: "Ppk", th: "ดัชนีสมรรถนะกระบวนการ" },
+                { en: "Trend", th: "แนวโน้ม" },
+                { en: "Variation", th: "ความแปรปรวน" },
+                { en: "Root Cause", th: "สาเหตุรากเหง้า" },
+                { en: "Corrective Action", th: "การแก้ไขปัญหา" },
+                { en: "Preventive Action", th: "การป้องกันปัญหา" },
+                { en: "5 Why Analysis", th: "การวิเคราะห์ ทำไม 5 ครั้ง" },
+                { en: "Fishbone Diagram", th: "แผนผังก้างปลา" },
+                { en: "8D Report", th: "รายงาน 8 มิติ" },
+                { en: "First Article Inspection (FAI)", th: "การตรวจชิ้นแรก" },
+                { en: "In-Process Inspection", th: "การตรวจระหว่างกระบวนการ" },
+                { en: "Incoming Inspection", th: "การตรวจรับวัตถุดิบ" },
+                { en: "Final Inspection", th: "การตรวจขั้นสุดท้าย" },
+                { en: "Sampling", th: "การสุ่มตัวอย่าง" },
+                { en: "AQL (Acceptable Quality Level)", th: "ระดับคุณภาพที่ยอมรับได้" },
+                { en: "Continuous Improvement", th: "การปรับปรุงอย่างต่อเนื่อง" }
+            ]
+        },
+        warehouse: {
+            name: "📦 คลังสินค้า (Warehouse)",
+            words: [
+                { en: "Warehouse", th: "คลังสินค้า" },
+                { en: "Inventory", th: "สินค้าคงคลัง" },
+                { en: "Stock", th: "สินค้า / สต็อก" },
+                { en: "SKU (Stock Keeping Unit)", th: "รหัสสินค้า" },
+                { en: "Item", th: "รายการสินค้า" },
+                { en: "Material", th: "วัสดุ/วัตถุดิบ" },
+                { en: "Product", th: "สินค้า/ผลิตภัณฑ์" },
+                { en: "Receipt", th: "การรับสินค้า" },
+                { en: "Receiving", th: "การรับเข้า" },
+                { en: "GRN (Goods Received Note)", th: "ใบรับสินค้า" },
+                { en: "Put-away", th: "การนำสินค้าเข้าจัดเก็บ" },
+                { en: "Storage", th: "การจัดเก็บ" },
+                { en: "Location", th: "ตำแหน่งจัดเก็บ" },
+                { en: "Bin / Bin Location", th: "ช่องเก็บสินค้า" },
+                { en: "Shelf", th: "ชั้นวางสินค้า" },
+                { en: "Rack", th: "ชั้นวาง/แร็ค" },
+                { en: "Pallet", th: "พาเลท/แท่นวางสินค้า" },
+                { en: "Palletizing", th: "การจัดสินค้าขึ้นพาเลท" },
+                { en: "AS/RS", th: "ระบบจัดเก็บและเบิกจ่ายสินค้าอัตโนมัติ" },
+                { en: "FIFO (First In First Out)", th: "เข้าก่อน-ออกก่อน" },
+                { en: "LIFO (Last In First Out)", th: "เข้าหลัง-ออกก่อน" },
+                { en: "FEFO (First Expire First Out)", th: "ใกล้หมดอายุก่อน-ออกก่อน" },
+                { en: "Cycle Count", th: "การนับสต็อกเป็นรอบ" },
+                { en: "Stock Count", th: "การนับสต็อก" },
+                { en: "Stock Card", th: "บัตรคุมสต็อก" },
+                { en: "Picking", th: "การหยิบสินค้า" },
+                { en: "Pick List", th: "ใบหยิบสินค้า" },
+                { en: "Packing", th: "การบรรจุสินค้า" },
+                { en: "Pack List", th: "ใบรายการบรรจุ" },
+                { en: "Shipping", th: "การจัดส่งสินค้า" },
+                { en: "Delivery Order (DO)", th: "ใบส่งสินค้า" },
+                { en: "Dispatch", th: "การส่งมอบสินค้า" },
+                { en: "Loading", th: "การโหลดสินค้า" },
+                { en: "Unloading", th: "การขนถ่ายสินค้า" },
+                { en: "QC (Quality Control)", th: "การควบคุมคุณภาพ" },
+                { en: "Inspection", th: "การตรวจสอบ" },
+                { en: "Damage", th: "สินค้าเสียหาย" },
+                { en: "Shortage", th: "สินค้าขาด" },
+                { en: "Expired", th: "สินค้าหมดอายุ" },
+                { en: "Return", th: "การส่งคืนสินค้า" },
+                { en: "Back Order", th: "การสั่งซื้อสินค้าล่วงหน้า" },
+                { en: "Reorder Point", th: "จุดสั่งซื้อใหม่" },
+                { en: "Safety Stock", th: "สต็อกสำรอง" },
+                { en: "Lead Time", th: "ระยะเวลานำ" },
+                { en: "WMS", th: "ระบบบริหารจัดการคลังสินค้า" },
+                { en: "Bar Code", th: "บาร์โค้ด" },
+                { en: "RFID", th: "ระบบระบุด้วยคลื่นวิทยุ" },
+                { en: "Physical Inventory", th: "การตรวจนับสต็อกจริง" },
+                { en: "Housekeeping", th: "การทำความสะอาดและจัดระเบียบ" },
+                { en: "5S", th: "สะสาง สะดวก สะอาด สุขลักษณะ สร้างนิสัย" }
+            ]
+        }
+    };
+
+    // ตัวแปรควบคุมเกม
+    let currentCategory = '';
+    let currentWords = [];
+    let score = 0;
+    let currentQuestionIndex = 0;
+    let timerInterval;
+    let timeLeft = 60; // ให้เวลา 60 วินาทีต่อรอบ
+
+    // ระบบ Streak (เข้าเล่นต่อเนื่อง)
+    function checkStreak() {
+        const lastPlayed = localStorage.getItem('lastPlayed');
+        let streak = parseInt(localStorage.getItem('streak') || 0);
+        const today = new Date().toDateString();
+
+        if (lastPlayed) {
+            const lastDate = new Date(lastPlayed);
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (lastPlayed !== today) {
+                if (lastDate.toDateString() === yesterday.toDateString()) {
+                    streak++; // เล่นต่อเนื่อง
+                } else {
+                    streak = 1; // ขาดตอน เริ่มใหม่
+                }
+            }
+        } else {
+            streak = 1; // เล่นครั้งแรก
+        }
+
+        localStorage.setItem('lastPlayed', today);
+        localStorage.setItem('streak', streak);
+        document.getElementById('streak-count').innerText = streak;
+    }
+
+    // ฟังก์ชันจัดการหน้าจอ
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(`screen-${screenId}`).classList.add('active');
+    }
+
+    // สร้างปุ่มเลือกหมวดหมู่ตอนเริ่มเกม
+    function initHome() {
+        checkStreak();
+        const container = document.getElementById('category-container');
+        container.innerHTML = '';
+        for (const [key, data] of Object.entries(vocabDatabase)) {
+            const btn = document.createElement('button');
+            btn.className = 'btn cat-btn';
+            btn.innerText = data.name;
+            btn.onclick = () => startGame(key);
+            container.appendChild(btn);
+        }
+    }
+
+    // สุ่ม Array
+    function shuffleArray(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    // เริ่มเกม
+    function startGame(categoryKey) {
+        currentCategory = categoryKey;
+        currentWords = shuffleArray([...vocabDatabase[categoryKey].words]);
+        score = 0;
+        currentQuestionIndex = 0;
+        timeLeft = 60;
+        
+        document.getElementById('score-count').innerText = score;
+        document.getElementById('current-category-title').innerText = vocabDatabase[categoryKey].name;
+        
+        showScreen('game');
+        startTimer();
+        loadNextQuestion();
+    }
+
+    // ระบบเวลา
+    function startTimer() {
+        const timerFill = document.getElementById('timer');
+        clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            const percentage = (timeLeft / 60) * 100;
+            timerFill.style.width = `${percentage}%`;
+            
+            if (percentage < 30) timerFill.style.background = 'var(--danger)';
+            else timerFill.style.background = 'var(--secondary)';
+
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    // โหลดคำถามถัดไป
+    function loadNextQuestion() {
+        if (currentQuestionIndex >= currentWords.length) {
+            // ถ้าระหว่างเล่นคำศัพท์หมด ให้สุ่มคำศัพท์ชุดเดิมมาเล่นต่อจนกว่าเวลาจะหมด
+            currentWords = shuffleArray([...vocabDatabase[currentCategory].words]);
+            currentQuestionIndex = 0;
+        }
+
+        const currentWordObj = currentWords[currentQuestionIndex];
+        document.getElementById('question').innerText = currentWordObj.en;
+
+        // สร้างตัวเลือก (1 ถูก + 3 ผิด)
+        let options = [currentWordObj.th];
+        
+        // หาคำแปลผิดจากหมวดเดียวกันมาหลอก
+        const allThWords = vocabDatabase[currentCategory].words.map(w => w.th);
+        const wrongOptions = shuffleArray(allThWords.filter(th => th !== currentWordObj.th)).slice(0, 3);
+        
+        options = shuffleArray([...options, ...wrongOptions]);
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(btn, opt, currentWordObj.th);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    // ตรวจคำตอบ
+    function checkAnswer(btn, selected, correct) {
+        // ปิดปุ่มทั้งหมดกันกดซ้ำ
+        const allBtns = document.getElementById('options-container').querySelectorAll('.btn');
+        allBtns.forEach(b => b.style.pointerEvents = 'none');
+
+        if (selected === correct) {
+            btn.classList.add('correct');
+            score += 10;
+            document.getElementById('score-count').innerText = score;
+            
+            // เพิ่มเวลาโบนัส 2 วินาที
+            timeLeft = Math.min(timeLeft + 2, 60); 
+        } else {
+            btn.classList.add('wrong');
+            // ไฮไลท์ข้อที่ถูกให้ดูด้วย
+            allBtns.forEach(b => {
+                if(b.innerText === correct) b.classList.add('correct');
+            });
+        }
+
+        setTimeout(() => {
+            currentQuestionIndex++;
+            loadNextQuestion();
+        }, 1000); // รอ 1 วินาทีแล้วไปข้อต่อไป
+    }
+
+    // จบเกม
+    function endGame() {
+        clearInterval(timerInterval);
+        document.getElementById('final-score').innerText = score;
+        
+        const msg = document.getElementById('result-message');
+        if(score > 100) msg.innerText = "สุดยอด! คุณคือผู้เชี่ยวชาญคำศัพท์โรงงาน 🏆";
+        else if(score > 50) msg.innerText = "เก่งมาก! ฝึกอีกนิดจะจำได้แม่นยำขึ้น 👍";
+        else msg.innerText = "พยายามได้ดี! พรุ่งนี้มาทบทวนกันใหม่นะ 💪";
+
+        showScreen('result');
+    }
+
+    // เริ่มต้นทำงาน
+    window.onload = initHome;
+
+</script>
+</body>
+</html>
